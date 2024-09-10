@@ -22,7 +22,7 @@ The output is in the format used by [graph-easy](http://bloodgate.com/perl/graph
 Example:
 
 ```
-$ spdxshow relationships mydoc.spdx.json
+$ spdxshow relationships mydoc.spdx.json | graph-easy --as=boxart
 ┌─────────────────────────────────────────┐
 │  oci.amd64: ubi9-micro sha256:1c848...  │
 │  oci.arm64: ubi9-micro sha256:1c848...  │

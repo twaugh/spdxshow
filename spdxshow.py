@@ -39,8 +39,11 @@ def truncate(l):
 
 
 def display_package(pkg):
-    purls = [ref["referenceLocator"] for ref in pkg.get("externalRefs", [])
-             if ref["referenceType"] == "purl"]
+    purls = [
+        ref["referenceLocator"]
+        for ref in pkg.get("externalRefs", [])
+        if ref["referenceType"] == "purl"
+    ]
     by_noq = {}
     for purl in purls:
         noq = purl.rsplit("?", maxsplit=1)[0]
@@ -130,13 +133,14 @@ def show_relationships(args):
             if rel["relatedSpdxElement"] == equivalent[0]:
                 rel["relatedSpdxElement"] = all_equiv
 
-    packages = {pkg["SPDXID"]: display_package(pkg)
-                for pkg in packages.values()}
+    packages = {pkg["SPDXID"]: display_package(pkg) for pkg in packages.values()}
     edges = []
     for rel in relationships:
         purls = [packages.get(line, line) for line in rel["spdxElementId"].split("\\n")]
         lhs = "\\n".join(purls)
-        purls = [packages.get(line, line) for line in rel["relatedSpdxElement"].split("\\n")]
+        purls = [
+            packages.get(line, line) for line in rel["relatedSpdxElement"].split("\\n")
+        ]
         rhs = "\\n".join(purls)
         rel_type = rel["relationshipType"]
         edges.append(f"[ {lhs} ] -- {rel_type} --> [ {rhs} ]")

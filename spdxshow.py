@@ -66,7 +66,7 @@ def display_package(pkg):
 
     ver = pkg.get("versionInfo")
     if ver and ver != "NOASSERTION":
-        return f"{pkg["name"]} {pkg["versionInfo"]}"
+        return f"{pkg['name']} {pkg['versionInfo']}"
 
     return pkg["name"]
 

@@ -147,6 +147,7 @@ def show_relationships(args):
     first = None
     offset = 2
     hints = not args.no_hints
+    seen = set()
     for rel in relationships:
         purls = [packages.get(line, line) for line in rel["spdxElementId"].split("\\n")]
         lhs = "\\n".join(purls)
@@ -155,14 +156,23 @@ def show_relationships(args):
         ]
         rhs = "\\n".join(purls)
         rel_type = rel["relationshipType"]
-        edge = f"[ {lhs} ] -- {rel_type} --> [ {rhs} ]"
 
         if first is None:
             first = lhs
+            seen.add(first)
 
-        if rhs != first and hints:
-            edge += f" {{ origin: {first}; offset: 0,{offset}; }}"
+        lhint = rhint = ""
+        if hints and lhs not in seen:
+            lhint = f" {{ origin: {first}; offset: 0,{offset}; }}"
+            seen.add(lhs)
             offset += 2
+
+        if hints and rhs not in seen:
+            rhint = f" {{ origin: {first}; offset: 0,{offset}; }}"
+            seen.add(rhs)
+            offset += 2
+
+        edge = f"[ {lhs} ]{lhint} -- {rel_type} --> [ {rhs} ]{rhint}"
 
         edges.append(edge)
 

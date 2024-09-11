@@ -31,6 +31,7 @@ def argparser():
         description="Show relationships between packages in Graph::Easy format. Pipe to eg `graph-easy --as=boxart`.",
     )
     relationships.add_argument("file", help="SPDX file", type=open)
+    relationships.add_argument("--no-hints", help="Disable placement hinting", action="store_true")
     return parser
 
 
@@ -143,6 +144,7 @@ def show_relationships(args):
     edges = []
     first = None
     offset = 2
+    hints = not args.no_hints
     for rel in relationships:
         purls = [packages.get(line, line) for line in rel["spdxElementId"].split("\\n")]
         lhs = "\\n".join(purls)
@@ -156,13 +158,15 @@ def show_relationships(args):
         if first is None:
             first = lhs
 
-        if rhs != first:
+        if rhs != first and hints:
             edge += f" {{ origin: {first}; offset: 0,{offset}; }}"
             offset += 2
 
         edges.append(edge)
 
-    print("graph { flow: south; }")
+    if hints:
+        print("graph { flow: south; }")
+
     print("\n".join(edges))
 
 

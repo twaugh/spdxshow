@@ -141,6 +141,8 @@ def show_relationships(args):
 
     packages = {pkg["SPDXID"]: display_package(pkg) for pkg in packages.values()}
     edges = []
+    first = None
+    offset = 2
     for rel in relationships:
         purls = [packages.get(line, line) for line in rel["spdxElementId"].split("\\n")]
         lhs = "\\n".join(purls)
@@ -149,7 +151,15 @@ def show_relationships(args):
         ]
         rhs = "\\n".join(purls)
         rel_type = rel["relationshipType"]
-        edges.append(f"[ {lhs} ] -- {rel_type} --> [ {rhs} ]")
+        edge = f"[ {lhs} ] -- {rel_type} --> [ {rhs} ]"
+
+        if first is None:
+            first = lhs
+
+        edge += f" {{ origin: {first}; offset: 0,{offset}; }}"
+        offset += 2
+
+        edges.append(edge)
 
     print("graph { flow: south; }")
     print("\n".join(edges))

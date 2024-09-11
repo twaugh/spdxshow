@@ -156,8 +156,9 @@ def show_relationships(args):
         if first is None:
             first = lhs
 
-        edge += f" {{ origin: {first}; offset: 0,{offset}; }}"
-        offset += 2
+        if rhs != first:
+            edge += f" {{ origin: {first}; offset: 0,{offset}; }}"
+            offset += 2
 
         edges.append(edge)
 

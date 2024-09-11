@@ -23,9 +23,13 @@ from packageurl import PackageURL
 def argparser():
     parser = argparse.ArgumentParser(description="Show SPDX elements")
     subparsers = parser.add_subparsers(dest="command")
-    packages = subparsers.add_parser("packages")
+    packages = subparsers.add_parser("packages", aliases=["p"])
     packages.add_argument("file", help="SPDX file", type=open)
-    relationships = subparsers.add_parser("relationships")
+    relationships = subparsers.add_parser(
+        "relationships",
+        aliases=["r"],
+        description="Show relationships between packages in Graph::Easy format. Pipe to eg `graph-easy --as=boxart`.",
+    )
     relationships.add_argument("file", help="SPDX file", type=open)
     return parser
 
@@ -44,12 +48,12 @@ def display_package(pkg):
         for ref in pkg.get("externalRefs", [])
         if ref["referenceType"] == "purl"
     ]
-    by_noq = {}
-    for purl in purls:
-        noq = purl.rsplit("?", maxsplit=1)[0]
-        by_noq.setdefault(noq, []).append(purl)
-
     if purls:
+        by_noq = {}
+        for purl in purls:
+            noq = purl.rsplit("?", maxsplit=1)[0]
+            by_noq.setdefault(noq, []).append(purl)
+
         noq = Counter(by_noq).most_common()[0][0]
         purl = PackageURL.from_string(by_noq[noq][0])
 
@@ -57,19 +61,19 @@ def display_package(pkg):
             return purl.qualifiers["download_url"]
         version = purl.version
         if version.startswith("sha256:"):
-            version = version[:12] + "..."
+            version = version[: 7 + 5] + "..."
 
         arch = purl.qualifiers.get("arch", "")
         if arch:
             arch = f".{arch}"
         elif purl.type == "oci":
-            arch = f".index"
+            arch = ".index"
 
         return f"{purl.type}{arch}: {purl.name} {version}"
 
     ver = pkg.get("versionInfo")
     if ver and ver != "NOASSERTION":
-        return f"{pkg['name']} {pkg['versionInfo']}"
+        return f"{pkg['name']} {ver}"
 
     return pkg["name"]
 
@@ -116,21 +120,23 @@ def show_relationships(args):
 
     for equivalent in filter(lambda pkgs: len(pkgs) > 1, connections.values()):
         # Remove duplicate relationships
+        primary = equivalent[0]
+        others = equivalent[1:]
         relationships = [
             rel
             for rel in relationships
             if (
-                rel["spdxElementId"] not in equivalent[1:]
-                and rel["relatedSpdxElement"] not in equivalent[1:]
+                rel["spdxElementId"] not in others
+                and rel["relatedSpdxElement"] not in others
             )
         ]
 
         # Combine equivalent relationships
         all_equiv = "\\n".join(truncate(equivalent))
         for rel in relationships:
-            if rel["spdxElementId"] == equivalent[0]:
+            if rel["spdxElementId"] == primary:
                 rel["spdxElementId"] = all_equiv
-            if rel["relatedSpdxElement"] == equivalent[0]:
+            if rel["relatedSpdxElement"] == primary:
                 rel["relatedSpdxElement"] = all_equiv
 
     packages = {pkg["SPDXID"]: display_package(pkg) for pkg in packages.values()}
@@ -158,12 +164,13 @@ def show_packages(args):
 def main():
     parser = argparser()
     args = parser.parse_args()
-    if args.command == "relationships":
+    if args.command in ("relationships", "r"):
         show_relationships(args)
-    elif args.command == "packages":
+    elif args.command in ("packages", "p"):
         show_packages(args)
     else:
-        raise NotImplementedError
+        parser.print_help()
+        return 1
 
 
 if __name__ == "__main__":

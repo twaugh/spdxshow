@@ -74,6 +74,10 @@ def display_package(pkg):
 
         return f"{purl.type}{arch}: {purl.name} {version}"
 
+    pfn = pkg.get("packageFileName")
+    if pfn and pfn != "NOASSERTION":
+        return pfn
+
     ver = pkg.get("versionInfo")
     if ver and ver != "NOASSERTION":
         return f"{pkg['name']} {ver}"

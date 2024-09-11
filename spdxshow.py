@@ -31,7 +31,9 @@ def argparser():
         description="Show relationships between packages in Graph::Easy format. Pipe to eg `graph-easy --as=boxart`.",
     )
     relationships.add_argument("file", help="SPDX file", type=open)
-    relationships.add_argument("--no-hints", help="Disable placement hinting", action="store_true")
+    relationships.add_argument(
+        "--no-hints", help="Disable placement hinting", action="store_true"
+    )
     return parser
 
 

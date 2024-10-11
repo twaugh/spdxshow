@@ -45,44 +45,57 @@ def truncate(l):
     return l
 
 
-def display_package(pkg):
+def display_package(pkg, detail=0):
     purls = [
         ref["referenceLocator"]
         for ref in pkg.get("externalRefs", [])
         if ref["referenceType"] == "purl"
     ]
-    if purls:
-        by_noq = {}
-        for purl in purls:
-            noq = purl.rsplit("?", maxsplit=1)[0]
-            by_noq.setdefault(noq, []).append(purl)
-
-        noq = Counter(by_noq).most_common()[0][0]
-        purl = PackageURL.from_string(by_noq[noq][0])
-
-        if "download_url" in purl.qualifiers:
-            return purl.qualifiers["download_url"]
-        version = purl.version
-        if version.startswith("sha256:"):
-            version = version[: 7 + 5] + "..."
-
-        arch = purl.qualifiers.get("arch", "")
-        if arch:
-            arch = f".{arch}"
-        elif purl.type == "oci":
-            arch = ".index"
-
-        return f"{purl.type}{arch}: {purl.name} {version}"
-
     pfn = pkg.get("packageFileName")
-    if pfn and pfn != "NOASSERTION":
-        return pfn
-
     ver = pkg.get("versionInfo")
-    if ver and ver != "NOASSERTION":
-        return f"{pkg['name']} {ver}"
+    descr = None
+    match detail:
+        case 0 | 1:
+            if purls:
+                by_noq = {}
+                for purl in purls:
+                    noq = purl.rsplit("?", maxsplit=1)[0]
+                    by_noq.setdefault(noq, []).append(purl)
 
-    return pkg["name"]
+                noq = Counter(by_noq).most_common()[0][0]
+                purl = PackageURL.from_string(by_noq[noq][0])
+
+                if "download_url" in purl.qualifiers:
+                    descr = purl.qualifiers["download_url"]
+                else:
+                    version = purl.version
+                    if version.startswith("sha256:"):
+                        version = version[: 7 + 5] + "..."
+
+                    arch = purl.qualifiers.get("arch", "")
+                    if arch:
+                        arch = f".{arch}"
+                    elif purl.type == "oci":
+                        arch = ".index"
+
+                    descr = f"{purl.type}{arch}: {purl.name} {version}"
+            elif pfn and pfn != "NOASSERTION":
+                descr = pfn
+            elif ver and ver != "NOASSERTION":
+                descr = f"{pkg['name']} {ver}"
+            else:
+                descr = pkg["name"]
+
+            # Add detail in case of duplicates
+            if detail == 1:
+                if purls or (pfn and pfn != "NOASSERTION"):
+                    descr = f"{pkg['name']}: {descr}"
+                else:
+                    descr = pkg["SPDXID"]
+        case 2:
+            descr = pkg["SPDXID"]
+
+    return descr
 
 
 def show_relationships(args):
@@ -90,6 +103,7 @@ def show_relationships(args):
 
     relationships = doc.get("relationships", [])
     packages = {pkg["SPDXID"]: pkg for pkg in doc.get("packages", [])}
+    packagedescrs = get_package_descriptions(doc)
 
     # Make it easy to look up inbound and outbound relationship connections
     # for a package
@@ -146,17 +160,17 @@ def show_relationships(args):
             if rel["relatedSpdxElement"] == primary:
                 rel["relatedSpdxElement"] = all_equiv
 
-    packages = {pkg["SPDXID"]: display_package(pkg) for pkg in packages.values()}
+
     edges = []
     first = None
     offset = 2
     hints = not args.no_hints
     seen = set()
     for rel in relationships:
-        purls = [packages.get(line, line) for line in rel["spdxElementId"].split("\\n")]
+        purls = [packagedescrs.get(line, line) for line in rel["spdxElementId"].split("\\n")]
         lhs = "\\n".join(purls)
         purls = [
-            packages.get(line, line) for line in rel["relatedSpdxElement"].split("\\n")
+            packagedescrs.get(line, line) for line in rel["relatedSpdxElement"].split("\\n")
         ]
         rhs = "\\n".join(purls)
         rel_type = rel["relationshipType"]
@@ -186,10 +200,33 @@ def show_relationships(args):
     print("\n".join(edges))
 
 
+def get_package_descriptions(doc):
+    packages = {pkg["SPDXID"]: pkg for pkg in doc.get("packages", [])}
+    packagedescrs = {pkg["SPDXID"]: display_package(pkg) for pkg in packages.values()}
+
+    # Add more detail in case of duplicate package descriptions
+    detail = 0
+    while True:
+        packagedescr_values = list(packagedescrs.values())
+        pkg_dups = {spdxid for spdxid, descr in packagedescrs.items() if packagedescr_values.count(descr) > 1}
+        if not pkg_dups:
+            break
+
+        detail += 1
+        if detail > 2:
+            # Give up
+            break
+
+        for spdxid in pkg_dups:
+            packagedescrs[spdxid] = display_package(packages[spdxid], detail=detail)
+
+    return packagedescrs
+
+
 def show_packages(args):
     doc = json.load(args.file)
-    packages = doc.get("packages", [])
-    print("\n".join([display_package(pkg) for pkg in packages]))
+    packagedescrs = get_package_descriptions(doc)
+    print("\n".join(packagedescrs.values()))
 
 
 def main():

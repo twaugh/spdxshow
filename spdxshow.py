@@ -68,7 +68,7 @@ def display_package(pkg, detail=0):
                 if "download_url" in purl.qualifiers:
                     descr = purl.qualifiers["download_url"]
                 else:
-                    version = purl.version
+                    version = purl.version or ''
                     if version.startswith("sha256:"):
                         version = version[: 7 + 5] + "..."
 

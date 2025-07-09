@@ -24,13 +24,13 @@ def argparser():
     parser = argparse.ArgumentParser(description="Show SPDX elements")
     subparsers = parser.add_subparsers(dest="command")
     packages = subparsers.add_parser("packages", aliases=["p"])
-    packages.add_argument("file", help="SPDX file", type=open)
+    packages.add_argument("file", help="SPDX file ('-' for stdin)", type=str)
     relationships = subparsers.add_parser(
         "relationships",
         aliases=["r"],
         description="Show relationships between packages in Graph::Easy format. Pipe to eg `graph-easy --as=boxart`.",
     )
-    relationships.add_argument("file", help="SPDX file", type=open)
+    relationships.add_argument("file", help="SPDX file ('-' for stdin)", type=str)
     relationships.add_argument(
         "--no-hints", help="Disable placement hinting", action="store_true"
     )
@@ -232,6 +232,12 @@ def show_packages(args):
 def main():
     parser = argparser()
     args = parser.parse_args()
+    # Open file or use stdin if '-' is supplied
+    if hasattr(args, 'file'):
+        if args.file == '-':
+            args.file = sys.stdin
+        else:
+            args.file = open(args.file)
     if args.command in ("relationships", "r"):
         show_relationships(args)
     elif args.command in ("packages", "p"):
